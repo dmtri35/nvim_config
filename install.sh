@@ -287,27 +287,41 @@ else
     success "gopls already installed"
 fi
 
-# Clangd (C/C++)
-info "Installing clangd..."
-if ! command -v clangd &> /dev/null; then
-    case $PKG_MANAGER in
-        apt)
-            apt install -y clangd
-            ;;
-        dnf)
-            dnf install -y clang-tools-extra
-            ;;
-        pacman)
-            pacman -S --noconfirm clang
-            ;;
-        brew)
-            brew install llvm
-            ;;
-    esac
-    success "clangd installed"
+# Clangd (C/C++) - latest from GitHub
+info "Installing clangd from GitHub releases..."
+CLANGD_DIR="$HOME/.local/share/clangd"
+CLANGD_BIN="$HOME/.local/bin/clangd"
+
+# Always install latest from GitHub
+CLANGD_VERSION=$(curl -s https://api.github.com/repos/clangd/clangd/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+info "Latest clangd version: $CLANGD_VERSION"
+
+mkdir -p "$HOME/.local/bin"
+mkdir -p "$CLANGD_DIR"
+
+# Determine platform
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    CLANGD_PLATFORM="mac"
 else
-    success "clangd already installed"
+    CLANGD_PLATFORM="linux"
 fi
+
+cd /tmp
+curl -LO "https://github.com/clangd/clangd/releases/download/${CLANGD_VERSION}/clangd-${CLANGD_PLATFORM}-${CLANGD_VERSION}.zip"
+rm -rf "$CLANGD_DIR"/*
+unzip -q "clangd-${CLANGD_PLATFORM}-${CLANGD_VERSION}.zip" -d "$CLANGD_DIR"
+# The zip extracts to a subdirectory
+ln -sf "$CLANGD_DIR/clangd_${CLANGD_VERSION}/bin/clangd" "$CLANGD_BIN"
+rm "clangd-${CLANGD_PLATFORM}-${CLANGD_VERSION}.zip"
+cd - > /dev/null
+
+# Ensure ~/.local/bin is in PATH
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+    echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
+    export PATH=$PATH:$HOME/.local/bin
+fi
+
+success "clangd installed: $($CLANGD_BIN --version | head -1)"
 
 # Rust Analyzer
 info "Installing rust-analyzer..."
@@ -446,7 +460,7 @@ echo "  - typescript-language-server (TypeScript/JavaScript)"
 echo "  - biome (JS/TS formatter)"
 echo "  - lua-language-server (Lua)"
 echo "  - gopls (Go)"
-echo "  - clangd (C/C++)"
+echo "  - clangd (C/C++) - latest from GitHub"
 echo "  - rust-analyzer (Rust)"
 echo "  - bash-language-server (Bash)"
 echo ""
