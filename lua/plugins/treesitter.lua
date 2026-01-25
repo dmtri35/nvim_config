@@ -3,35 +3,25 @@ return {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
     event = { "BufReadPost", "BufNewFile" },
-    dependencies = {
-      "nvim-treesitter/nvim-treesitter-textobjects",
-    },
     config = function()
-      require("nvim-treesitter.configs").setup({
-        ensure_installed = { "cpp", "lua", "go", "c", "python" },
-        sync_install = true,
-        auto_install = true,
-        ignore_install = { "javascript" },
+      -- Try to install parsers using the new API
+      local ok, install = pcall(require, "nvim-treesitter.install")
+      if ok then
+        install.prefer_git = false
+        -- Ensure parsers are installed
+        local parsers = { "cpp", "lua", "go", "c", "python", "bash", "rust", "zig" }
+        for _, parser in ipairs(parsers) do
+          pcall(function()
+            install.ensure_installed(parser)
+          end)
+        end
+      end
 
-        highlight = {
-          enable = true,
-          disable = {},
-          additional_vim_regex_highlighting = true,
-        },
-
-        incremental_selection = {
-          enable = true,
-          keymaps = {
-            init_selection = "gnn",
-            node_incremental = "grn",
-            scope_incremental = "grc",
-            node_decremental = "grm",
-          },
-        },
-
-        indent = {
-          enable = true,
-        },
+      -- Enable treesitter highlighting
+      vim.api.nvim_create_autocmd("FileType", {
+        callback = function(args)
+          pcall(vim.treesitter.start, args.buf)
+        end,
       })
     end,
   },

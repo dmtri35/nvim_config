@@ -24,70 +24,60 @@ return {
       vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
       vim.keymap.set("n", "<space>q", vim.diagnostic.setloclist, opts)
 
-      local on_attach = function(client, bufnr)
-        vim.api.nvim_buf_set_option(bufnr, "omnifunc", "v:lua.vim.lsp.omnifunc")
-        local bufopts = { noremap = true, silent = true, buffer = bufnr }
-        vim.keymap.set("n", "gD", vim.lsp.buf.declaration, bufopts)
-        vim.keymap.set("n", "ga", vim.lsp.buf.code_action, bufopts)
-        vim.keymap.set("n", "gi", vim.lsp.buf.implementation, bufopts)
-        vim.keymap.set("n", "gd", vim.lsp.buf.definition, bufopts)
-        vim.keymap.set("n", "gr", vim.lsp.buf.references, bufopts)
-        vim.keymap.set("n", "gc", vim.lsp.buf.incoming_calls, bufopts)
-        vim.keymap.set("n", "go", vim.lsp.buf.outgoing_calls, bufopts)
-        vim.keymap.set("n", "gn", vim.diagnostic.goto_next, bufopts)
-        vim.keymap.set("n", "gp", vim.diagnostic.goto_prev, bufopts)
-        vim.keymap.set("n", "K", vim.lsp.buf.hover, bufopts)
-        vim.keymap.set("n", "<C-k>", vim.lsp.buf.signature_help, bufopts)
-        vim.keymap.set("n", "<space>wa", vim.lsp.buf.add_workspace_folder, bufopts)
-        vim.keymap.set("n", "<space>wr", vim.lsp.buf.remove_workspace_folder, bufopts)
-        vim.keymap.set("n", "<space>wl", function()
-          print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
-        end, bufopts)
-        vim.keymap.set("n", "<space>D", vim.lsp.buf.type_definition, bufopts)
-        vim.keymap.set("n", "<space>rn", vim.lsp.buf.rename, bufopts)
-
-        if client.server_capabilities.document_formatting then
-          vim.keymap.set("n", "<space>f", function()
-            vim.lsp.buf.document_formatting({ async = true })
-          end, bufopts)
-        elseif client.server_capabilities.document_range_formatting then
-          vim.keymap.set("n", "<space>f", function()
-            vim.lsp.buf.document_range_formatting({ async = true })
-          end, bufopts)
-        else
-          vim.keymap.set("n", "<space>f", function()
-            vim.lsp.buf.format({ async = true })
-          end, bufopts)
-        end
-      end
-
       -- Setup neodev before lspconfig
       require("neodev").setup()
 
-      local nvim_lsp = require("lspconfig")
       local cmp_capabilities = require("cmp_nvim_lsp").default_capabilities()
 
-      -- Python
-      nvim_lsp.pyright.setup({
-        on_attach = on_attach,
+      -- LspAttach autocommand for keymaps
+      vim.api.nvim_create_autocmd("LspAttach", {
+        group = vim.api.nvim_create_augroup("UserLspConfig", {}),
+        callback = function(ev)
+          local bufnr = ev.buf
+          local client = vim.lsp.get_client_by_id(ev.data.client_id)
+          vim.bo[bufnr].omnifunc = "v:lua.vim.lsp.omnifunc"
+          local bufopts = { noremap = true, silent = true, buffer = bufnr }
+          vim.keymap.set("n", "gD", vim.lsp.buf.declaration, bufopts)
+          vim.keymap.set("n", "ga", vim.lsp.buf.code_action, bufopts)
+          vim.keymap.set("n", "gi", vim.lsp.buf.implementation, bufopts)
+          vim.keymap.set("n", "gd", vim.lsp.buf.definition, bufopts)
+          vim.keymap.set("n", "gr", vim.lsp.buf.references, bufopts)
+          vim.keymap.set("n", "gc", vim.lsp.buf.incoming_calls, bufopts)
+          vim.keymap.set("n", "go", vim.lsp.buf.outgoing_calls, bufopts)
+          vim.keymap.set("n", "gn", vim.diagnostic.goto_next, bufopts)
+          vim.keymap.set("n", "gp", vim.diagnostic.goto_prev, bufopts)
+          vim.keymap.set("n", "K", vim.lsp.buf.hover, bufopts)
+          vim.keymap.set("n", "<C-k>", vim.lsp.buf.signature_help, bufopts)
+          vim.keymap.set("n", "<space>wa", vim.lsp.buf.add_workspace_folder, bufopts)
+          vim.keymap.set("n", "<space>wr", vim.lsp.buf.remove_workspace_folder, bufopts)
+          vim.keymap.set("n", "<space>wl", function()
+            print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
+          end, bufopts)
+          vim.keymap.set("n", "<space>D", vim.lsp.buf.type_definition, bufopts)
+          vim.keymap.set("n", "<space>rn", vim.lsp.buf.rename, bufopts)
+
+          if client and client.server_capabilities.document_formatting then
+            vim.keymap.set("n", "<space>f", function()
+              vim.lsp.buf.format({ async = true })
+            end, bufopts)
+          elseif client and client.server_capabilities.document_range_formatting then
+            vim.keymap.set("n", "<space>f", function()
+              vim.lsp.buf.format({ async = true })
+            end, bufopts)
+          else
+            vim.keymap.set("n", "<space>f", function()
+              vim.lsp.buf.format({ async = true })
+            end, bufopts)
+          end
+        end,
       })
 
-      -- Lua
-      nvim_lsp.lua_ls.setup({
-        on_attach = on_attach,
-      })
-
-      -- JavaScript/TypeScript
-      nvim_lsp.biome.setup({
-        on_attach = on_attach,
-      })
-
-      nvim_lsp.ts_ls.setup({
-        on_attach = on_attach,
-      })
-
-      -- Go
-      nvim_lsp.gopls.setup({
+      -- Configure LSP servers using the new vim.lsp.config API
+      vim.lsp.config("pyright", {})
+      vim.lsp.config("lua_ls", {})
+      vim.lsp.config("biome", {})
+      vim.lsp.config("ts_ls", {})
+      vim.lsp.config("gopls", {
         cmd = { "gopls" },
         capabilities = capabilities,
         settings = {
@@ -113,35 +103,28 @@ return {
             staticcheck = true,
           },
         },
-        on_attach = on_attach,
       })
-
-      -- Zig
-      nvim_lsp.zls.setup({
-        on_attach = on_attach,
-      })
-
-      -- C/C++
-      nvim_lsp.clangd.setup({
-        on_attach = on_attach,
+      vim.lsp.config("zls", {})
+      vim.lsp.config("clangd", {
         capabilities = cmp_capabilities,
       })
-
-      -- Rust
-      nvim_lsp.rust_analyzer.setup({
-        on_attach = on_attach,
-      })
-
-      -- Bash
-      nvim_lsp.bashls.setup({
-        on_attach = on_attach,
-      })
-
-      -- Java (jdtls) - adjust path as needed
-      nvim_lsp.jdtls.setup({
-        on_attach = on_attach,
+      vim.lsp.config("rust_analyzer", {})
+      vim.lsp.config("bashls", {})
+      vim.lsp.config("jdtls", {
         cmd = { "/home/tridao/jdt/bin/jdtls", "-configuration", "/home/tridao/jdt/config_linux" },
       })
+
+      -- Enable all configured servers
+      vim.lsp.enable("pyright")
+      vim.lsp.enable("lua_ls")
+      vim.lsp.enable("biome")
+      vim.lsp.enable("ts_ls")
+      vim.lsp.enable("gopls")
+      vim.lsp.enable("zls")
+      vim.lsp.enable("clangd")
+      vim.lsp.enable("rust_analyzer")
+      vim.lsp.enable("bashls")
+      vim.lsp.enable("jdtls")
     end,
   },
 
