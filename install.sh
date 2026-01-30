@@ -134,7 +134,7 @@ if ! command -v node &> /dev/null; then
     info "Installing Node.js..."
     case $PKG_MANAGER in
         apt)
-            curl -fsSL https://deb.nodesource.com/setup_lts.x | -E bash -
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -E -
             apt install -y nodejs
             ;;
         dnf)
