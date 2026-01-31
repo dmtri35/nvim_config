@@ -15,6 +15,10 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+-- Disable netrw (using Oil instead)
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
 -- Set leader key before lazy
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
