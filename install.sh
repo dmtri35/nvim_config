@@ -293,7 +293,7 @@ CLANGD_DIR="$HOME/.local/share/clangd"
 CLANGD_BIN="$HOME/.local/bin/clangd"
 
 # Always install latest from GitHub
-CLANGD_VERSION=$(curl -s https://api.github.com/repos/clangd/clangd/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+CLANGD_VERSION=$(curl -sL https://api.github.com/repos/clangd/clangd/releases | grep -m1 '"tag_name"' | cut -d'"' -f4)
 info "Latest clangd version: $CLANGD_VERSION"
 
 mkdir -p "$HOME/.local/bin"
