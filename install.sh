@@ -430,7 +430,73 @@ else
 fi
 
 # ============================================
-# 11. Install plugins via lazy.nvim
+# 11. Git global defaults (~/.gitconfig)
+# ============================================
+echo ""
+info "Configuring git global defaults..."
+
+GITCONFIG="${HOME}/.gitconfig"
+if [[ -f "$GITCONFIG" ]] && grep -qF '# clearly makes git better' "$GITCONFIG" 2>/dev/null; then
+    success "Git defaults already present in $GITCONFIG"
+else
+    cat >> "$GITCONFIG" <<'GITCONFIG_EOF'
+
+# clearly makes git better
+
+[column]
+        ui = auto
+[branch]
+        sort = -committerdate
+[tag]
+        sort = version:refname
+[init]
+        defaultBranch = main
+[diff]
+        algorithm = histogram
+        colorMoved = plain
+        mnemonicPrefix = true
+        renames = true
+[push]
+        default = simple
+        autoSetupRemote = true
+        followTags = true
+[fetch]
+        prune = true
+        pruneTags = true
+        all = true
+
+# why the hell not?
+
+[help]
+        autocorrect = prompt
+[commit]
+        verbose = true
+[rerere]
+        enabled = true
+        autoupdate = true
+[core]
+        excludesfile = ~/.gitignore
+[rebase]
+        autoSquash = true
+        autoStash = true
+        updateRefs = true
+
+# a matter of taste (uncomment if you dare)
+
+[core]
+        # fsmonitor = true
+        # untrackedCache = true
+[merge]
+        # (just 'diff3' if git version < 2.3)
+        # conflictstyle = zdiff3
+[pull]
+        # rebase = true
+GITCONFIG_EOF
+    success "Appended git defaults to $GITCONFIG"
+fi
+
+# ============================================
+# 12. Install plugins via lazy.nvim
 # ============================================
 echo ""
 info "Installing Neovim plugins via lazy.nvim..."
@@ -438,7 +504,7 @@ nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
 success "Plugins installed"
 
 # ============================================
-# Summary
+# 13. Summary
 # ============================================
 echo ""
 echo "=============================================="
