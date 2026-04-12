@@ -240,6 +240,83 @@ else
     success "typescript-language-server already installed"
 fi
 
+# ============================================
+# 9. Install or update fzf
+# ============================================
+info "Installing latest fzf..."
+case $PKG_MANAGER in
+    brew)
+        if command -v fzf &> /dev/null; then
+            brew upgrade fzf || brew install fzf
+        else
+            brew install fzf
+        fi
+        ;;
+    apt|dnf|pacman)
+        FZF_VERSION=$(curl -s https://api.github.com/repos/junegunn/fzf/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+        info "Latest version: $FZF_VERSION"
+
+        case "$(uname -m)" in
+            x86_64|amd64)
+                FZF_ARCH="amd64"
+                ;;
+            aarch64|arm64)
+                FZF_ARCH="arm64"
+                ;;
+            *)
+                warn "Unsupported architecture for GitHub fzf binaries; falling back to package manager"
+                install_pkg fzf
+                FZF_ARCH=""
+                ;;
+        esac
+
+        if [ -n "$FZF_ARCH" ]; then
+            rm -rf /tmp/fzf-install
+            mkdir -p /tmp/fzf-install
+            curl -L "https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION#v}-linux_${FZF_ARCH}.tar.gz" -o /tmp/fzf.tar.gz
+            tar -xzf /tmp/fzf.tar.gz -C /tmp/fzf-install
+            install -m 755 /tmp/fzf-install/fzf /usr/local/bin/fzf
+            if [ -f /tmp/fzf-install/fzf-tmux ]; then
+                install -m 755 /tmp/fzf-install/fzf-tmux /usr/local/bin/fzf-tmux
+            fi
+            rm -rf /tmp/fzf-install /tmp/fzf.tar.gz
+        fi
+        ;;
+    *)
+        install_pkg fzf
+        ;;
+esac
+success "fzf installed: $(fzf --version)"
+
+# ============================================
+# 10. Set up fzf shell integration
+# ============================================
+info "Checking fzf shell integration..."
+if command -v fzf &> /dev/null; then
+    if grep -Fqx 'eval "$(fzf --bash)"' "$HOME/.bashrc" 2> /dev/null; then
+        success "fzf bash integration already configured in ~/.bashrc"
+    else
+        echo '' >> "$HOME/.bashrc"
+        echo '# Set up fzf key bindings and fuzzy completion' >> "$HOME/.bashrc"
+        echo 'eval "$(fzf --bash)"' >> "$HOME/.bashrc"
+        success "Added fzf bash integration to ~/.bashrc"
+    fi
+else
+    warn "fzf is not installed; skipping bash integration setup"
+fi
+
+# ============================================
+# 11. Set Neovim as default editor
+# ============================================
+info "Checking default editor..."
+if grep -Fqx 'export EDITOR=nvim' "$HOME/.bashrc" 2> /dev/null; then
+    success "Default editor already set to nvim in ~/.bashrc"
+else
+    echo '' >> "$HOME/.bashrc"
+    echo 'export EDITOR=nvim' >> "$HOME/.bashrc"
+    success "Set default editor to nvim in ~/.bashrc"
+fi
+
 # Biome (JS/TS formatter/linter)
 info "Installing biome..."
 if ! command -v biome &> /dev/null; then
@@ -496,7 +573,29 @@ GITCONFIG_EOF
 fi
 
 # ============================================
-# 12. Install plugins via lazy.nvim
+# 12. Persist Codex state on mounted workspace
+# ============================================
+echo ""
+info "Configuring Codex to use /workspace as HOME..."
+
+CODEX_WRAPPER_BLOCK=$(cat <<'EOF'
+# Persist Codex state on the mounted workspace volume.
+mkdir -p /workspace/.codex /workspace/.agents
+codex() {
+    HOME=/workspace /usr/local/nvm/versions/node/v16.20.0/bin/codex "$@"
+}
+EOF
+)
+
+if grep -qF 'HOME=/workspace /usr/local/nvm/versions/node/v16.20.0/bin/codex "$@"' ~/.bashrc 2>/dev/null; then
+    success "Codex wrapper already present in ~/.bashrc"
+else
+    printf '\n%s\n' "$CODEX_WRAPPER_BLOCK" >> ~/.bashrc
+    success "Codex wrapper added to ~/.bashrc"
+fi
+
+# ============================================
+# 13. Install plugins via lazy.nvim
 # ============================================
 echo ""
 info "Installing Neovim plugins via lazy.nvim..."
@@ -504,7 +603,7 @@ nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
 success "Plugins installed"
 
 # ============================================
-# 13. Summary
+# 14. Summary
 # ============================================
 echo ""
 echo "=============================================="
