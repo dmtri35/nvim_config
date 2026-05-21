@@ -582,7 +582,7 @@ CODEX_WRAPPER_BLOCK=$(cat <<'EOF'
 # Persist Codex state on the mounted workspace volume.
 mkdir -p /workspace/.codex /workspace/.agents
 codex() {
-    HOME=/workspace /usr/local/nvm/versions/node/v16.20.0/bin/codex "$@"
+    HOME=/workspace codex "$@"
 }
 EOF
 )
