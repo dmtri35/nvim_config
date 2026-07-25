@@ -13,6 +13,16 @@ success() { echo -e "${GREEN}[OK]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Append a line to ~/.bashrc only if that exact line is not already there, so
+# re-running this installer does not stack up duplicate exports.
+bashrc_append() {
+    local line=$1
+    if grep -Fqx "$line" "$HOME/.bashrc" 2> /dev/null; then
+        return 0
+    fi
+    printf '%s\n' "$line" >> "$HOME/.bashrc"
+}
+
 # Detect package manager
 detect_pkg_manager() {
     if command -v apt &> /dev/null; then
@@ -201,7 +211,7 @@ if ! command -v go &> /dev/null; then
             rm -rf /usr/local/go
             tar -C /usr/local -xzf /tmp/go.tar.gz
             rm /tmp/go.tar.gz
-            echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.bashrc
+            bashrc_append 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin'
             export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
             ;;
         pacman)
@@ -337,7 +347,7 @@ if ! command -v lua-language-server &> /dev/null; then
             curl -L "https://github.com/LuaLS/lua-language-server/releases/download/${LUA_LS_VERSION}/lua-language-server-${LUA_LS_VERSION}-linux-x64.tar.gz" | tar xz -C ~/.local/share/lua-language-server
             mkdir -p ~/.local/bin
             ln -sf ~/.local/share/lua-language-server/bin/lua-language-server ~/.local/bin/lua-language-server
-            echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
+            bashrc_append 'export PATH=$PATH:$HOME/.local/bin'
             export PATH=$PATH:$HOME/.local/bin
             ;;
         pacman)
@@ -393,8 +403,8 @@ rm "clangd-${CLANGD_PLATFORM}-${CLANGD_VERSION}.zip"
 cd - > /dev/null
 
 # Ensure ~/.local/bin is in PATH
+bashrc_append 'export PATH=$PATH:$HOME/.local/bin'
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-    echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
     export PATH=$PATH:$HOME/.local/bin
 fi
 
@@ -582,12 +592,14 @@ CODEX_WRAPPER_BLOCK=$(cat <<'EOF'
 # Persist Codex state on the mounted workspace volume.
 mkdir -p /workspace/.codex /workspace/.agents
 codex() {
-    HOME=/workspace codex "$@"
+    # 'command' is required: without it the name resolves back to this
+    # function, recursing until bash overflows its stack and segfaults.
+    HOME=/workspace command codex "$@"
 }
 EOF
 )
 
-if grep -qF 'HOME=/workspace /usr/local/nvm/versions/node/v16.20.0/bin/codex "$@"' ~/.bashrc 2>/dev/null; then
+if grep -qF '# Persist Codex state on the mounted workspace volume.' ~/.bashrc 2>/dev/null; then
     success "Codex wrapper already present in ~/.bashrc"
 else
     printf '\n%s\n' "$CODEX_WRAPPER_BLOCK" >> ~/.bashrc
