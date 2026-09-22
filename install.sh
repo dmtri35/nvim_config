@@ -607,7 +607,74 @@ else
 fi
 
 # ============================================
-# 13. Install plugins via lazy.nvim
+# 13. Install pi (coding agent CLI)
+# ============================================
+echo ""
+info "Checking pi..."
+if ! command -v pi &> /dev/null; then
+    info "Installing pi..."
+    curl -fsSL https://pi.dev/install.sh | sh
+    bashrc_append 'export PATH="$HOME/.pi/agent/bin:$PATH"'
+    export PATH="$HOME/.pi/agent/bin:$PATH"
+    success "pi installed: $(pi --version)"
+else
+    success "pi already installed: $(pi --version)"
+fi
+
+# ============================================
+# 14. Set up tailscale (direct ssh to the pod,
+#     skipping the Rancher proxy path)
+# ============================================
+echo ""
+info "Checking tailscale..."
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    warn "macOS: install the Tailscale app instead; skipping"
+elif [ ! -e /dev/net/tun ]; then
+    warn "/dev/net/tun missing (container lacks NET_ADMIN); skipping tailscale"
+else
+    if ! command -v tailscaled &> /dev/null; then
+        info "Installing tailscale static binaries..."
+        TS_VERSION="1.102.4"
+        case "$(uname -m)" in
+            x86_64)  TS_ARCH="amd64" ;;
+            aarch64) TS_ARCH="arm64" ;;
+            *)       error "Unsupported arch for tailscale: $(uname -m)"; TS_ARCH="" ;;
+        esac
+        if [ -n "$TS_ARCH" ]; then
+            curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_${TS_VERSION}_${TS_ARCH}.tgz" -o /tmp/tailscale.tgz
+            tar -xzf /tmp/tailscale.tgz -C /tmp
+            install -m 755 "/tmp/tailscale_${TS_VERSION}_${TS_ARCH}/tailscale" \
+                           "/tmp/tailscale_${TS_VERSION}_${TS_ARCH}/tailscaled" /usr/local/bin/
+            rm -rf /tmp/tailscale.tgz "/tmp/tailscale_${TS_VERSION}_${TS_ARCH}"
+        fi
+    fi
+
+    # State under $HOME: the machine identity (and tailnet IP) survives pod
+    # restarts on the same node, so the ssh alias keeps working.
+    TS_STATEDIR="$HOME/.local/tailscale-state"
+    mkdir -p "$TS_STATEDIR"
+    if ! pgrep -x tailscaled > /dev/null; then
+        nohup tailscaled --statedir="$TS_STATEDIR" > /var/log/tailscaled.log 2>&1 &
+        sleep 2
+    fi
+
+    # Restart tailscaled on shells in pods recreated without rerunning this script.
+    bashrc_append 'pgrep -x tailscaled > /dev/null || nohup tailscaled --statedir="$HOME/.local/tailscale-state" > /var/log/tailscaled.log 2>&1 &'
+
+    if tailscale status &> /dev/null; then
+        success "tailscale already up: $(tailscale ip -4)"
+    else
+        # Blocks for login; on a fresh machine this prints an auth URL to open.
+        if tailscale up --timeout=60s --hostname="$(hostname)"; then
+            success "tailscale up: $(tailscale ip -4)"
+        else
+            warn "tailscale needs auth; run 'tailscale up' later and open the URL it prints"
+        fi
+    fi
+fi
+
+# ============================================
+# 15. Install plugins via lazy.nvim
 # ============================================
 echo ""
 info "Installing Neovim plugins via lazy.nvim..."
@@ -615,7 +682,7 @@ nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
 success "Plugins installed"
 
 # ============================================
-# 14. Summary
+# 16. Summary
 # ============================================
 echo ""
 echo "=============================================="
@@ -640,4 +707,8 @@ echo "  - gopls (Go)"
 echo "  - clangd (C/C++) - latest from GitHub"
 echo "  - rust-analyzer (Rust)"
 echo "  - bash-language-server (Bash)"
+echo ""
+echo "Other tools:"
+echo "  - pi (coding agent CLI, https://pi.dev)"
+echo "  - tailscale (direct ssh to this machine; run 'tailscale up' if it printed an auth URL)"
 echo ""
