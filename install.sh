@@ -311,8 +311,20 @@ if command -v fzf &> /dev/null; then
         echo 'eval "$(fzf --bash)"' >> "$HOME/.bashrc"
         success "Added fzf bash integration to ~/.bashrc"
     fi
+
+    # zsh (the default shell on macOS): same keybindings via ~/.zshrc
+    if [ -f "$HOME/.zshrc" ] || [ "$(basename "${SHELL:-}")" = "zsh" ]; then
+        if grep -Fqx 'source <(fzf --zsh)' "$HOME/.zshrc" 2> /dev/null; then
+            success "fzf zsh integration already configured in ~/.zshrc"
+        else
+            echo '' >> "$HOME/.zshrc"
+            echo '# fzf keybindings and completion (Ctrl+R for history search)' >> "$HOME/.zshrc"
+            echo 'source <(fzf --zsh)' >> "$HOME/.zshrc"
+            success "Added fzf zsh integration to ~/.zshrc"
+        fi
+    fi
 else
-    warn "fzf is not installed; skipping bash integration setup"
+    warn "fzf is not installed; skipping shell integration setup"
 fi
 
 # ============================================
