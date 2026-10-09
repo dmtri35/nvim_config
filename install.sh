@@ -638,19 +638,43 @@ fi
 #     skipping the Rancher proxy path)
 # ============================================
 echo ""
+info "Checking kubectl..."
+if ! command -v kubectl &> /dev/null; then
+    if [ "$PKG_MANAGER" = "brew" ]; then
+        install_pkg kubectl
+    else
+        (
+            case "$(uname -m)" in
+                x86_64|amd64) KUBECTL_ARCH="amd64" ;;
+                aarch64|arm64) KUBECTL_ARCH="arm64" ;;
+                *) error "Unsupported arch for kubectl: $(uname -m)"; exit 1 ;;
+            esac
+            KUBECTL_VERSION=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
+            KUBECTL_TMP=$(mktemp -d)
+            trap 'rm -rf "$KUBECTL_TMP"' EXIT
+            cd "$KUBECTL_TMP"
+            KUBECTL_URL="https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl"
+            curl -fsSL "$KUBECTL_URL" -o kubectl
+            curl -fsSL "${KUBECTL_URL}.sha256" -o kubectl.sha256
+            printf '%s  kubectl\n' "$(cat kubectl.sha256)" | sha256sum --check
+            install -m 755 kubectl /usr/local/bin/kubectl
+        )
+    fi
+fi
+kubectl version --client
+success "kubectl client installed"
+
 info "Checking tailscale..."
 if [[ "$OSTYPE" == "darwin"* ]]; then
     warn "macOS: install the Tailscale app instead; skipping"
-elif [ ! -e /dev/net/tun ]; then
-    warn "/dev/net/tun missing (container lacks NET_ADMIN); skipping tailscale"
 else
-    if ! command -v tailscaled &> /dev/null; then
+    if ! command -v tailscale &> /dev/null || ! command -v tailscaled &> /dev/null; then
         info "Installing tailscale static binaries..."
         TS_VERSION="1.102.4"
         case "$(uname -m)" in
             x86_64)  TS_ARCH="amd64" ;;
             aarch64) TS_ARCH="arm64" ;;
-            *)       error "Unsupported arch for tailscale: $(uname -m)"; TS_ARCH="" ;;
+            *)       error "Unsupported arch for tailscale: $(uname -m)"; exit 1 ;;
         esac
         if [ -n "$TS_ARCH" ]; then
             curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_${TS_VERSION}_${TS_ARCH}.tgz" -o /tmp/tailscale.tgz
@@ -660,7 +684,12 @@ else
             rm -rf /tmp/tailscale.tgz "/tmp/tailscale_${TS_VERSION}_${TS_ARCH}"
         fi
     fi
+    success "tailscale and tailscaled installed"
+fi
 
+if [[ "$OSTYPE" != "darwin"* ]] && [ ! -e /dev/net/tun ]; then
+    warn "/dev/net/tun missing; tailscale binaries installed, skipping daemon setup"
+elif [[ "$OSTYPE" != "darwin"* ]]; then
     # State under $HOME: the machine identity (and tailnet IP) survives pod
     # restarts on the same node, so the ssh alias keeps working.
     TS_STATEDIR="$HOME/.local/tailscale-state"
@@ -721,6 +750,7 @@ echo "  - rust-analyzer (Rust)"
 echo "  - bash-language-server (Bash)"
 echo ""
 echo "Other tools:"
+echo "  - kubectl (Kubernetes client)"
 echo "  - pi (coding agent CLI, https://pi.dev)"
-echo "  - tailscale (direct ssh to this machine; run 'tailscale up' if it printed an auth URL)"
+echo "  - tailscale + tailscaled (direct ssh to this machine; run 'tailscale up' if it printed an auth URL)"
 echo ""
