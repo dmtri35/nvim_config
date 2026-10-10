@@ -594,6 +594,30 @@ GITCONFIG_EOF
     success "Appended git defaults to $GITCONFIG"
 fi
 
+info "Configuring gwt worktree helper..."
+if ! grep -Fqx 'gwt() {' "$HOME/.bashrc" 2>/dev/null; then
+    cat >> "$HOME/.bashrc" <<'GWT_EOF'
+
+gwt() {
+    if [ "$#" -ne 1 ] || [ -z "$1" ]; then
+        printf 'Usage: gwt <worktree-path>\n' >&2
+        return 1
+    fi
+    local remote_head default_branch
+    remote_head=$(git ls-remote --symref origin HEAD) || return
+    default_branch=$(printf '%s\n' "$remote_head" | awk '$1 == "ref:" && $3 == "HEAD" {sub("^refs/heads/", "", $2); print $2}')
+    if [ -z "$default_branch" ]; then
+        printf 'Cannot determine the default branch of origin.\n' >&2
+        return 1
+    fi
+    git fetch origin "$default_branch" || return
+    git worktree add -b "$1" -- "$1" FETCH_HEAD || return
+    cd -- "$1"
+}
+GWT_EOF
+fi
+success "gwt helper configured in ~/.bashrc"
+
 # ============================================
 # 12. Persist Codex state on mounted workspace
 # ============================================
