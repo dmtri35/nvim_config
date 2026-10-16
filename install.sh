@@ -642,6 +642,10 @@ else
     success "Codex wrapper added to ~/.bashrc"
 fi
 
+# Persist Claude Code state on the mounted workspace volume too.
+bashrc_append 'export CLAUDE_CONFIG_DIR=/workspace/model-performance/tridao/.claude-home/.claude'
+success "CLAUDE_CONFIG_DIR set in ~/.bashrc"
+
 # ============================================
 # 13. Install pi (coding agent CLI)
 # ============================================
@@ -739,7 +743,34 @@ elif [[ "$OSTYPE" != "darwin"* ]]; then
 fi
 
 # ============================================
-# 15. Install plugins via lazy.nvim
+# 15. Build rcli (Baseten k8s cluster CLI) from source
+# ============================================
+echo ""
+info "Building rcli from source..."
+# Private repo: clone over ssh so the GitHub ssh key is used.
+RCLI_SRC="$HOME/.local/src/rcli"
+RCLI_SHARE="$HOME/.local/share/rcli"
+if [ -d "$RCLI_SRC/.git" ]; then
+    git -C "$RCLI_SRC" pull --ff-only || warn "Could not update $RCLI_SRC; building the existing checkout"
+else
+    mkdir -p "$(dirname "$RCLI_SRC")"
+    git clone git@github.com:basetenlabs/rcli.git "$RCLI_SRC"
+fi
+mkdir -p "$HOME/.local/bin" "$RCLI_SHARE"
+# go.mod needs a newer Go than the one installed above; GOTOOLCHAIN=auto fetches it.
+(cd "$RCLI_SRC" && GOTOOLCHAIN=auto go build -o "$HOME/.local/bin/rcli" .)
+# Shell wrapper so `rcli select --env` can export KUBECONFIG into the current shell.
+install -m 644 "$RCLI_SRC/shell/rcli.sh" "$RCLI_SHARE/rcli.sh"
+bashrc_append 'export PATH=$PATH:$HOME/.local/bin'
+bashrc_append '[ -f "$HOME/.local/share/rcli/rcli.sh" ] && source "$HOME/.local/share/rcli/rcli.sh"'
+bashrc_append 'command -v rcli > /dev/null && source <(rcli completion bash)'
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+    export PATH=$PATH:$HOME/.local/bin
+fi
+success "rcli installed: $(command -v rcli)"
+
+# ============================================
+# 16. Install plugins via lazy.nvim
 # ============================================
 echo ""
 info "Installing Neovim plugins via lazy.nvim..."
@@ -747,7 +778,7 @@ nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
 success "Plugins installed"
 
 # ============================================
-# 16. Summary
+# 17. Summary
 # ============================================
 echo ""
 echo "=============================================="
@@ -776,5 +807,6 @@ echo ""
 echo "Other tools:"
 echo "  - kubectl (Kubernetes client)"
 echo "  - pi (coding agent CLI, https://pi.dev)"
+echo "  - rcli (Baseten k8s cluster CLI; run 'rcli init' to set up)"
 echo "  - tailscale + tailscaled (direct ssh to this machine; run 'tailscale up' if it printed an auth URL)"
 echo ""
