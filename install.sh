@@ -594,6 +594,10 @@ GITCONFIG_EOF
     success "Appended git defaults to $GITCONFIG"
 fi
 
+git config --global user.name "Tri Dao"
+git config --global user.email "daominhtri0503@gmail.com"
+success "Git identity set to $(git config --global user.name) <$(git config --global user.email)>"
+
 info "Configuring gwt worktree helper..."
 if ! grep -Fqx 'gwt() {' "$HOME/.bashrc" 2>/dev/null; then
     cat >> "$HOME/.bashrc" <<'GWT_EOF'
