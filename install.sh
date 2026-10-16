@@ -747,7 +747,49 @@ elif [[ "$OSTYPE" != "darwin"* ]]; then
 fi
 
 # ============================================
-# 15. Build rcli (Baseten k8s cluster CLI) from source
+# 15. Install GitHub CLI (gh) and log in
+# ============================================
+echo ""
+info "Checking gh..."
+if ! command -v gh &> /dev/null; then
+    info "Installing gh..."
+    case $PKG_MANAGER in
+        apt)
+            # Distro gh lags far behind; use GitHub's apt repo.
+            mkdir -p -m 755 /etc/apt/keyrings
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+                -o /etc/apt/keyrings/githubcli-archive-keyring.gpg
+            chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+                > /etc/apt/sources.list.d/github-cli.list
+            apt update
+            apt install -y gh
+            ;;
+        pacman)
+            install_pkg github-cli
+            ;;
+        *)
+            install_pkg gh
+            ;;
+    esac
+fi
+success "gh installed: $(gh --version | head -n1)"
+
+if gh auth status &> /dev/null; then
+    success "gh already logged in"
+elif [ -t 0 ]; then
+    # Interactive: prompts for account/protocol and prints a device code to open.
+    if gh auth login; then
+        success "gh logged in"
+    else
+        warn "gh login failed; run 'gh auth login' later"
+    fi
+else
+    warn "No TTY; run 'gh auth login' later"
+fi
+
+# ============================================
+# 16. Build rcli (Baseten k8s cluster CLI) from source
 # ============================================
 echo ""
 info "Building rcli from source..."
@@ -774,7 +816,7 @@ fi
 success "rcli installed: $(command -v rcli)"
 
 # ============================================
-# 16. Install plugins via lazy.nvim
+# 17. Install plugins via lazy.nvim
 # ============================================
 echo ""
 info "Installing Neovim plugins via lazy.nvim..."
@@ -782,7 +824,7 @@ nvim --headless "+Lazy! sync" +qa 2>/dev/null || true
 success "Plugins installed"
 
 # ============================================
-# 17. Summary
+# 18. Summary
 # ============================================
 echo ""
 echo "=============================================="
@@ -812,5 +854,6 @@ echo "Other tools:"
 echo "  - kubectl (Kubernetes client)"
 echo "  - pi (coding agent CLI, https://pi.dev)"
 echo "  - rcli (Baseten k8s cluster CLI; run 'rcli init' to set up)"
+echo "  - gh (GitHub CLI; run 'gh auth login' if it was skipped)"
 echo "  - tailscale + tailscaled (direct ssh to this machine; run 'tailscale up' if it printed an auth URL)"
 echo ""
