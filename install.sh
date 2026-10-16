@@ -651,7 +651,7 @@ bashrc_append 'export CLAUDE_CONFIG_DIR=/workspace/model-performance/tridao/.cla
 success "CLAUDE_CONFIG_DIR set in ~/.bashrc"
 
 # ============================================
-# 13. Install pi (coding agent CLI)
+# 13. Install pi and opencode (coding agent CLIs)
 # ============================================
 echo ""
 info "Checking pi..."
@@ -663,6 +663,17 @@ if ! command -v pi &> /dev/null; then
     success "pi installed: $(pi --version)"
 else
     success "pi already installed: $(pi --version)"
+fi
+
+info "Checking opencode..."
+if ! command -v opencode &> /dev/null; then
+    info "Installing opencode..."
+    curl -fsSL https://opencode.ai/install | bash
+    bashrc_append 'export PATH="$HOME/.opencode/bin:$PATH"'
+    export PATH="$HOME/.opencode/bin:$PATH"
+    success "opencode installed: $(opencode --version)"
+else
+    success "opencode already installed: $(opencode --version)"
 fi
 
 # ============================================
@@ -853,6 +864,7 @@ echo ""
 echo "Other tools:"
 echo "  - kubectl (Kubernetes client)"
 echo "  - pi (coding agent CLI, https://pi.dev)"
+echo "  - opencode (coding agent CLI, https://opencode.ai)"
 echo "  - rcli (Baseten k8s cluster CLI; run 'rcli init' to set up)"
 echo "  - gh (GitHub CLI; run 'gh auth login' if it was skipped)"
 echo "  - tailscale + tailscaled (direct ssh to this machine; run 'tailscale up' if it printed an auth URL)"
