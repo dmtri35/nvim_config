@@ -250,6 +250,15 @@ else
     success "typescript-language-server already installed"
 fi
 
+# YAML Language Server
+info "Installing yaml-language-server..."
+if ! command -v yaml-language-server &> /dev/null; then
+    npm install -g yaml-language-server
+    success "yaml-language-server installed"
+else
+    success "yaml-language-server already installed"
+fi
+
 # ============================================
 # 9. Install or update fzf
 # ============================================
@@ -854,6 +863,7 @@ echo ""
 echo "LSP servers installed:"
 echo "  - pyright (Python)"
 echo "  - typescript-language-server (TypeScript/JavaScript)"
+echo "  - yaml-language-server (YAML)"
 echo "  - biome (JS/TS formatter)"
 echo "  - lua-language-server (Lua)"
 echo "  - gopls (Go)"

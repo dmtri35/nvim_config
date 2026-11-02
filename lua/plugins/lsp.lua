@@ -110,6 +110,7 @@ return {
       })
       vim.lsp.config("rust_analyzer", {})
       vim.lsp.config("bashls", {})
+      vim.lsp.config("yamlls", {})
       vim.lsp.config("jdtls", {
         cmd = { "/home/tridao/jdt/bin/jdtls", "-configuration", "/home/tridao/jdt/config_linux" },
       })
@@ -124,6 +125,7 @@ return {
       vim.lsp.enable("clangd")
       vim.lsp.enable("rust_analyzer")
       vim.lsp.enable("bashls")
+      vim.lsp.enable("yamlls")
       vim.lsp.enable("jdtls")
     end,
   },

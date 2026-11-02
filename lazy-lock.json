@@ -6,7 +6,7 @@
   "cmp-nvim-lsp": { "branch": "main", "commit": "cbc7b02bb99fae35cb42f514762b89b5126651ef" },
   "cmp-path": { "branch": "main", "commit": "c642487086dbd9a93160e1679a1327be111cbc25" },
   "cmp-vsnip": { "branch": "main", "commit": "989a8a73c44e926199bfd05fa7a516d51f2d2752" },
-  "dracula": { "branch": "master", "commit": "e7817b4baccfb3529f709ac048c621f35cdbc5b3" },
+  "dracula": { "branch": "master", "commit": "c689958744a93851b870e17ede7e9cbd28bc7cf8" },
   "gruvbox": { "branch": "master", "commit": "ef8864bb42bf244f0295d1c5a403b27e3d139695" },
   "gruvbox-material": { "branch": "master", "commit": "11d779b26a9ab2b3db8c22c6ac9fb6e8ed4fea79" },
   "kanagawa.nvim": { "branch": "master", "commit": "bb85e4bfc8d89b0e62c8fa53ccdd13d12e2f77b3" },
