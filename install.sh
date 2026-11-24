@@ -660,7 +660,7 @@ bashrc_append 'export CLAUDE_CONFIG_DIR=/workspace/model-performance/tridao/.cla
 success "CLAUDE_CONFIG_DIR set in ~/.bashrc"
 
 # ============================================
-# 13. Install pi and opencode (coding agent CLIs)
+# 13. Install pi, opencode, and Antigravity CLI (coding agent CLIs)
 # ============================================
 echo ""
 info "Checking pi..."
@@ -683,6 +683,57 @@ if ! command -v opencode &> /dev/null; then
     success "opencode installed: $(opencode --version)"
 else
     success "opencode already installed: $(opencode --version)"
+fi
+
+OPENCODE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
+mkdir -p "$OPENCODE_CONFIG_DIR"
+
+# Remap Ctrl+U / Ctrl+D to half-page scroll (HHKB / tmux friendly).
+OPENCODE_CLI_JSON="$OPENCODE_CONFIG_DIR/cli.json"
+python3 - "$OPENCODE_CLI_JSON" <<'PYEOF'
+import json, pathlib, sys
+
+p = pathlib.Path(sys.argv[1])
+data = json.loads(p.read_text()) if p.exists() else {}
+data.setdefault("$schema", "https://opencode.ai/v2/cli.json")
+kb = data.setdefault("keybinds", {})
+kb.update({
+    "app.exit": ["ctrl+c", "<leader>q"],
+    "input.delete": ["delete", "shift+delete"],
+    "input.delete.to.line.start": "none",
+    "session.half.page.up": ["ctrl+u", "ctrl+alt+u"],
+    "session.half.page.down": ["ctrl+d", "ctrl+alt+d"],
+})
+p.write_text(json.dumps(data, indent=2) + "\n")
+PYEOF
+success "Configured opencode scroll keybinds in $OPENCODE_CLI_JSON"
+
+# Instruct models to use fenced `math` blocks (natively rendered by OpenCode TUI)
+# and Unicode inline math instead of raw $...$ / $$...$$ delimiters.
+OPENCODE_AGENTS_MD="$OPENCODE_CONFIG_DIR/AGENTS.md"
+if ! grep -qF '# Math formatting' "$OPENCODE_AGENTS_MD" 2>/dev/null; then
+    cat >> "$OPENCODE_AGENTS_MD" <<'AGENTS_EOF'
+# Math formatting
+
+OpenCode TUI renders fenced `math` / `latex` blocks natively, but shows `$...$`, `$$...$$`, `\(...\)`, and `\[...\]` as raw text.
+
+- Inline math: use Unicode symbols (e.g. α, β, x², ≤, ∑, →) instead of `$...$` or `\(...\)`.
+- Display math (fractions, matrices, integrals, multi-line derivations): use fenced `math` code blocks instead of `$$...$$` or `\[...\]`. Use `\,` or `\;` rather than `\ ` for spacing.
+AGENTS_EOF
+    success "Added LaTeX math formatting instructions to $OPENCODE_AGENTS_MD"
+else
+    success "LaTeX math formatting instructions already present in $OPENCODE_AGENTS_MD"
+fi
+
+info "Checking Antigravity CLI (agy)..."
+if ! command -v agy &> /dev/null; then
+    info "Installing Antigravity CLI..."
+    curl -fsSL https://antigravity.google/cli/install.sh | bash
+    bashrc_append 'export PATH=$PATH:$HOME/.local/bin'
+    export PATH="$PATH:$HOME/.local/bin"
+    success "Antigravity CLI installed: $(agy --version)"
+else
+    success "Antigravity CLI already installed: $(agy --version)"
 fi
 
 # ============================================
@@ -875,6 +926,7 @@ echo "Other tools:"
 echo "  - kubectl (Kubernetes client)"
 echo "  - pi (coding agent CLI, https://pi.dev)"
 echo "  - opencode (coding agent CLI, https://opencode.ai)"
+echo "  - agy (Antigravity CLI, https://antigravity.google)"
 echo "  - rcli (Baseten k8s cluster CLI; run 'rcli init' to set up)"
 echo "  - gh (GitHub CLI; run 'gh auth login' if it was skipped)"
 echo "  - tailscale + tailscaled (direct ssh to this machine; run 'tailscale up' if it printed an auth URL)"
